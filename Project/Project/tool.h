@@ -59,18 +59,18 @@ public:
         std::function<void(int)> test_postcondition = [](int) {};
         sf::Color test_color = sf::Color::Black;
         std::string test_name = "function";
+        sf::Clock clock;
     };
 
     void addTest(const Test& test);
     void runTest(int testId);
+    void testFunction(std::function<double(double)> test_function, const std::string& name = "function", sf::Color color = sf::Color::Black);
     void showResult();
     void start();
 
 private:
     sf::RenderWindow window;
     Graph graph;
-
-    sf::Clock clock;
 
     const std::size_t N;
     const std::size_t STEP;

@@ -70,7 +70,7 @@ void Graph::draw(sf::RenderTarget& target, sf::RenderStates states) const
 
         text.setFillColor(grid_color);
         text.setString(std::to_string(y_pos/y_scale));
-        text.setPosition(grid_step / 2.0, -(y_pos + char_size + 5));
+        text.setPosition(5, -(y_pos + char_size + 5));
         target.draw(text, states);
     }
 
@@ -117,10 +117,7 @@ void Graph::update()
 
 void Graph::addPoint(const std::string& name, float x, float y)
 {
-    const float y_to_pixels = y * y_scale;
-    const float x_to_pixels = x * x_scale;
-
-    sf::Vertex vertex({x_to_pixels, -y_to_pixels }, foreground_color);
+    sf::Vertex vertex({ x * x_scale, -y * y_scale }, foreground_color);
     data[name].append(vertex);
 }
 
@@ -140,6 +137,7 @@ Tester::Tester(int N, float ms, int step, int repet)
     graph.x_name = "N";
     graph.y_max = ms;
     graph.y_name = "ms";
+    graph.update();
 }
 
 
@@ -151,24 +149,37 @@ void Tester::addTest(const Test& test)
 void Tester::runTest(int testId)
 {
     Test& test = tests[testId];
+
+    std::vector<int> testResults(REPET, 0);
     for (int n = 0; n < N; n += STEP)
     {
         test.test_precondition(n);
 
-        sf::Time avgDt;
         for (int t = 0; t < REPET; ++t)
         {
-            sf::Time begin = clock.getElapsedTime();
+            sf::Time begin = test.clock.getElapsedTime();
             test.test_operation(n);
-            sf::Time end = clock.restart();
-            avgDt += end - begin;
+            sf::Time end = test.clock.restart();
+            testResults[t] = ((end - begin).asMicroseconds());
         }
-
+        std::sort(testResults.begin(), testResults.end());
+        const float medianTime_ms = testResults[REPET / 2]/1000.0f;
         test.test_postcondition(n);
 
         std::unique_lock<std::mutex> lock(graphLock);
         graph.foreground_color = test.test_color;
-        graph.addPoint(test.test_name, n, avgDt.asMicroseconds() / REPET / 1000.0);
+        graph.addPoint(test.test_name, n, medianTime_ms);
+    }
+}
+
+void Tester::testFunction(std::function<double(double)> test_function, const std::string& name, sf::Color color)
+{
+    for (int n = 0; n < N; n += STEP)
+    {
+        std::unique_lock<std::mutex> lock(graphLock);
+
+        graph.foreground_color = color;
+        graph.addPoint(name, n, test_function(n));
     }
 }
 

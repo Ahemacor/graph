@@ -15,16 +15,60 @@
 #include <map>
 #include <unordered_map>
 #include <algorithm>
-#include <numeric> 
+#include <numeric>
+#include <climits>
 
+std::vector<int> findPrimeFactors(int number)
+{
+    std::vector<int> factors;
+    for (int d = 2; d < number; ++d)
+    {
+        while (number % d == 0)
+        {
+            factors.push_back(d);
+            number /= d;
+        }
+    }
+
+    if (number > 1) factors.push_back(number);
+
+    return factors;
+}
+
+std::vector<int> findPrimeFactorsFast(int number)
+{
+    std::vector<int> factors;
+
+    if (number > 1)
+    {
+        while (number % 2 == 0)
+        {
+            factors.push_back(2);
+            number /= 2;
+        }
+
+        for (int d = 3, limit = std::sqrt(number); d < limit; d += 2)
+        {
+            while (number % d == 0)
+            {
+                factors.push_back(d);
+                number /= d;
+                limit = std::sqrt(number);
+            }
+        }
+
+        if (number > 1) factors.push_back(number);
+    }
+    return factors;
+}
 
 int main()
 {
     const unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    const int N = 1000;
-    const float ms_max = 5;
-    const int step = 10;
-    const int repet = 10;
+    const int N = 500000;
+    const float ms_max = 30;
+    const int step = 100;
+    const int repet = 1;
 
     std::vector<int> random(N);
     std::iota(random.begin(), random.end(), 0);
@@ -32,86 +76,47 @@ int main()
 
     Tester tester(N, ms_max, step, repet);
 
-    std::map<int, int> map;
+    for (const auto& num : findPrimeFactorsFast(31525))
     {
-        Tester::Test test;
-        test.test_precondition = [&](int n)
-        {
-            if (map.size() > 0)
-            {
-                map.clear();
-            }
-
-            for (int i = 0; i < n; ++i)
-            {
-                map[i] = i;
-            }
-        };
-
-        test.test_operation = [&](int n)
-        {
-            if (map.size() > 0)
-            {
-                for(const auto& r : random) map.find(r);
-            }
-        };
-
-        test.test_color = sf::Color::Blue;
-        test.test_name = "map";
-        tester.addTest(test);
+        std::cout << num << std::endl;
     }
 
-    std::unordered_map<int, int> u_map;
+
     {
         Tester::Test test;
-        test.test_precondition = [&](int n)
-        {
-            if (u_map.size() > 0)
-            {
-                u_map.clear();
-            }
-
-            for (int i = 0; i < n; ++i)
-            {
-                u_map[i] = i;
-            }
-        };
-
-        test.test_operation = [&](int n)
-        {
-            if (u_map.size() > 0)
-            {
-                for(const auto& r : random) u_map.find(r);
-            }
-        };
-
+        test.test_operation = [&](int n) { for (int i = 0; i < 99; ++i) findPrimeFactorsFast(n+i); };
         test.test_color = sf::Color::Red;
-        test.test_name = "u_map";
+        test.test_name = "prime factors fast";
         tester.addTest(test);
     }
 
-    std::vector<int> vector(N);
-    std::iota(vector.begin(), vector.end(), 0);
     {
         Tester::Test test;
-        test.test_precondition = [&](int n)
-        {
-            vector.resize(n);
-        };
-
-        test.test_operation = [&](int n)
-        {
-            if (vector.size() > 0)
-            {
-                for (const auto& r : random) linear_search(vector.cbegin(), vector.cend(), r);
-            }
-        };
-
-        test.test_color = sf::Color::Green;
-        test.test_name = "vector";
+        test.test_operation = [&](int n) { for (int i = 0; i < 99; ++i) findPrimeFactors(n+i); };
+        test.test_color = sf::Color::Blue;
+        test.test_name = "prime factors slow";
         tester.addTest(test);
     }
 
+
+    /*
+    {
+        Tester::Test test;
+        test.test_operation = [&](int n) {for (int i = 0; i < n; ++i) gcd_iterative(random[i] % (n+1), random[(n - 1) - i] % (n+1)); };
+        test.test_color = sf::Color::Blue;
+        test.test_name = "gcd iterative";
+        tester.addTest(test);
+    }
+
+    {
+        Tester::Test test;
+        test.test_operation = [&](int n) {for (int i = 0; i < n; ++i) gcd(random[i] % (n + 1), random[(n - 1) - i] % (n + 1)); };
+        test.test_color = sf::Color::Green;
+        test.test_name = "gcd recursive";
+        tester.addTest(test);
+    }
+    */
 
     tester.start();
+
 }
