@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+#include <set>
+
 template<typename Key, typename Iterator>
 const Iterator linear_search(const Iterator& cbegin, const Iterator& cend, const Key& key)
 {
@@ -21,6 +24,22 @@ int fibonacci_iterative(int n);
 int gcd_iterative(int lhs, int rhs);
 
 int gcd(int lhs, int rhs);
+
+std::vector<int> findPrimeFactors(int number);
+
+std::vector<int> findPrimeFactorsFast(int number);
+
+std::set<int> findPrimeNumbersEratosthenesSet(int number);
+
+std::vector<int> findPrimeNumbersEratosthenes(int number);
+
+bool isPrime(int number);
+
+std::vector<int> findPrimeNumbers(int number);
+
+bool isPrimeFermat(int number);
+
+std::vector<int> findPrimeNumbersFermat(int number);
 
 // Linear congruential generator
 int getRandom(int from, int to);

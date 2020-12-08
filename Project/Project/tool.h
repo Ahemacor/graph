@@ -40,7 +40,7 @@ private:
     sf::RectangleShape x_axis;
     sf::RectangleShape y_axis;
 
-    std::unordered_map<std::string, sf::VertexArray> data;
+    std::vector<std::pair<std::string, sf::VertexArray>> data;
 
     sf::Font font;
 };

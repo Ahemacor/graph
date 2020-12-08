@@ -17,105 +17,202 @@
 #include <algorithm>
 #include <numeric>
 #include <climits>
+#include <unordered_set>
+#include <set>
 
-std::vector<int> findPrimeFactors(int number)
+template<typename Iterator>
+void check_sort(Iterator begin, Iterator end)
 {
-    std::vector<int> factors;
-    for (int d = 2; d < number; ++d)
+    for (Iterator prev = begin, it = begin; it != end; ++it)
     {
-        while (number % d == 0)
+        auto current = it;
+        if (*current < *prev)
         {
-            factors.push_back(d);
-            number /= d;
+            std::cout << "NOT SORTED!" << std::endl;
+            break;
         }
+        prev = current;
     }
-
-    if (number > 1) factors.push_back(number);
-
-    return factors;
 }
 
-std::vector<int> findPrimeFactorsFast(int number)
+template<typename Iterator> Iterator find_min(Iterator begin, Iterator end)
 {
-    std::vector<int> factors;
-
-    if (number > 1)
+    Iterator min_it = begin;
+    for (Iterator it = begin; it != end; ++it)
     {
-        while (number % 2 == 0)
-        {
-            factors.push_back(2);
-            number /= 2;
-        }
+        if (*it < *min_it) min_it = it;
+    }
+    return min_it;
+}
 
-        for (int d = 3, limit = std::sqrt(number); d < limit; d += 2)
+template<typename Iterator> void selection_sort(Iterator begin, Iterator end)
+{
+    for (Iterator it = begin; it != end; ++it)
+    {
+        Iterator min = find_min(it, end);
+        std::swap(*min, *it);
+    }
+}
+
+template<typename Iterator> Iterator find_greater_equal(Iterator value, Iterator begin, Iterator end)
+{
+    Iterator greater = end;
+    for (Iterator it = begin; it != end; ++it)
+    {
+        if (*it >= *value)
         {
-            while (number % d == 0)
+            greater = it;
+            break;
+        }
+    }
+    return greater;
+}
+
+void insertion_sort(std::vector<int>& vector)
+{
+    std::vector<int> sorted;
+    sorted.reserve(vector.size());
+    for(auto begin = vector.begin(), end = vector.end(); begin != end; ++begin)
+    {
+        auto placeToInsert = find_greater_equal(begin, sorted.begin(), sorted.end());
+        sorted.insert(placeToInsert, *begin);
+    }
+    vector = sorted;
+}
+
+void buble_sort_0(std::vector<int>& vector)
+{
+    const int numOfElements = vector.size();
+    bool sorted = false;
+    while (!sorted)
+    {
+        sorted = true;
+        for (int index = 0; index < (numOfElements - 1); ++index)
+        {
+            if (vector[index] > vector[index + 1])
             {
-                factors.push_back(d);
-                number /= d;
-                limit = std::sqrt(number);
+                std::swap(vector[index], vector[index + 1]);
+                sorted = false;
+            }
+        }
+    }
+}
+
+void buble_sort_1(std::vector<int>& vector)
+{
+    const int numOfElements = vector.size();
+    bool sorted = false;
+    int prev_last_swap = numOfElements;
+    int last_swap = numOfElements;
+    bool order = true;
+    while (!sorted)
+    {
+        sorted = true;
+        for (int index = 0; index < (numOfElements - 1); ++index)
+        {
+            if (vector[index] > vector[index + 1])
+            {
+                std::swap(vector[index], vector[index + 1]);
+                sorted = false;
+                last_swap = index + 1;
+            }
+
+            if (index > prev_last_swap)
+            {
+                break;
             }
         }
 
-        if (number > 1) factors.push_back(number);
+        prev_last_swap = last_swap;
     }
-    return factors;
 }
 
 int main()
 {
     const unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    const int N = 500000;
-    const float ms_max = 30;
-    const int step = 100;
+    const int N = 5'000;
+    const float ms_max = 500;
+    const int step = 1;
     const int repet = 1;
 
-    std::vector<int> random(N);
-    std::iota(random.begin(), random.end(), 0);
-    std::shuffle(random.begin(), random.end(), std::default_random_engine(seed));
+    auto initVector = [seed](std::vector<int>& vector, int n) {
+        vector.resize(n);
+        std::iota(vector.begin(), vector.end(), 0);
+        std::shuffle(vector.begin(), vector.end(), std::default_random_engine(seed));
+    };
+
+    std::vector<int> test_vector;
+    initVector(test_vector, 10);
+    buble_sort_1(test_vector);
+    check_sort(test_vector.begin(), test_vector.end());
 
     Tester tester(N, ms_max, step, repet);
 
-    for (const auto& num : findPrimeFactorsFast(31525))
-    {
-        std::cout << num << std::endl;
-    }
-
-
+    std::vector<int> random_0(N);
+    std::iota(random_0.begin(), random_0.end(), 0);
+    std::shuffle(random_0.begin(), random_0.end(), std::default_random_engine(seed));
     {
         Tester::Test test;
-        test.test_operation = [&](int n) { for (int i = 0; i < 99; ++i) findPrimeFactorsFast(n+i); };
-        test.test_color = sf::Color::Red;
-        test.test_name = "prime factors fast";
-        tester.addTest(test);
-    }
-
-    {
-        Tester::Test test;
-        test.test_operation = [&](int n) { for (int i = 0; i < 99; ++i) findPrimeFactors(n+i); };
-        test.test_color = sf::Color::Blue;
-        test.test_name = "prime factors slow";
+        test.test_precondition = [&](int n) { initVector(random_0, n); };
+        test.test_operation = [&](int n) { std::sort(random_0.begin(), random_0.end()); };
+        test.test_postcondition = [&](int n) { check_sort(random_0.begin(), random_0.end()); };
+        test.test_color = sf::Color::Black;
+        test.test_name = "std::sort";
         tester.addTest(test);
     }
 
 
-    /*
+    std::vector<int> random_1(N);
+    std::iota(random_1.begin(), random_1.end(), 0);
+    std::shuffle(random_1.begin(), random_1.end(), std::default_random_engine(seed));
     {
         Tester::Test test;
-        test.test_operation = [&](int n) {for (int i = 0; i < n; ++i) gcd_iterative(random[i] % (n+1), random[(n - 1) - i] % (n+1)); };
-        test.test_color = sf::Color::Blue;
-        test.test_name = "gcd iterative";
-        tester.addTest(test);
-    }
-
-    {
-        Tester::Test test;
-        test.test_operation = [&](int n) {for (int i = 0; i < n; ++i) gcd(random[i] % (n + 1), random[(n - 1) - i] % (n + 1)); };
+        test.test_precondition = [&](int n) { initVector(random_1, n); };
+        test.test_operation = [&](int n) { selection_sort(random_1.begin(), random_1.end()); };
+        test.test_postcondition = [&](int n) { check_sort(random_1.begin(), random_1.end()); };
         test.test_color = sf::Color::Green;
-        test.test_name = "gcd recursive";
+        test.test_name = "selection sort";
         tester.addTest(test);
     }
-    */
+
+    std::vector<int> random_2(N);
+    std::iota(random_2.begin(), random_2.end(), 0);
+    std::shuffle(random_2.begin(), random_2.end(), std::default_random_engine(seed));
+    {
+        Tester::Test test;
+        test.test_precondition = [&](int n) { initVector(random_2, n); };
+        test.test_operation = [&](int n) { insertion_sort(random_2); };
+        test.test_postcondition = [&](int n) { check_sort(random_2.begin(), random_2.end()); };
+        test.test_color = sf::Color::Red;
+        test.test_name = "insertion sort";
+        tester.addTest(test);
+    }
+
+    std::vector<int> random_3(N);
+    std::iota(random_3.begin(), random_3.end(), 0);
+    std::shuffle(random_3.begin(), random_3.end(), std::default_random_engine(seed));
+    {
+        Tester::Test test;
+        test.test_precondition = [&](int n) { initVector(random_3, n); };
+        test.test_operation = [&](int n) { buble_sort_0(random_3); };
+        test.test_postcondition = [&](int n) { check_sort(random_3.begin(), random_3.end()); };
+        test.test_color = sf::Color::Blue;
+        test.test_name = "buble_sort_0";
+        tester.addTest(test);
+    }
+
+    std::vector<int> random_4(N);
+    std::iota(random_4.begin(), random_4.end(), 0);
+    std::shuffle(random_4.begin(), random_4.end(), std::default_random_engine(seed));
+    {
+        Tester::Test test;
+        test.test_precondition = [&](int n) { initVector(random_4, n); };
+        test.test_operation = [&](int n) { buble_sort_1(random_4); };
+        test.test_postcondition = [&](int n) { check_sort(random_4.begin(), random_4.end()); };
+        test.test_color = sf::Color::Yellow;
+        test.test_name = "buble_sort_1";
+        tester.addTest(test);
+    }
 
     tester.start();
 

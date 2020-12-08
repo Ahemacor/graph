@@ -5,6 +5,7 @@
 #include <iostream>
 #include <chrono>
 #include <random>
+#include <numeric>
 
 Graph::Graph(float width, float height) : width(width), height(height)
 {
@@ -77,10 +78,17 @@ void Graph::draw(sf::RenderTarget& target, sf::RenderStates states) const
     int graphId = 0;
     for (auto [name, vertices] : data)
     {
-        vertices.setPrimitiveType(sf::PrimitiveType::LinesStrip);
-        target.draw(vertices, states);
+        sf::VertexArray scaledVertices;
+        for (int vertex_id = 0; vertex_id < vertices.getVertexCount(); ++vertex_id)
+        {
+            scaledVertices.append(vertices[vertex_id]);
+            scaledVertices[vertex_id].position.x *= x_scale;
+            scaledVertices[vertex_id].position.y *= y_scale;
+        }
+        scaledVertices.setPrimitiveType(sf::PrimitiveType::LinesStrip);
+        target.draw(scaledVertices, states);
 
-        const sf::Vertex lastVertex = vertices[vertices.getVertexCount() - 1];
+        const sf::Vertex lastVertex = scaledVertices[scaledVertices.getVertexCount() - 1];
         sf::Color vertcolor = lastVertex.color;
         vertcolor.a = 64;
         text.setFillColor(vertcolor);
@@ -91,7 +99,7 @@ void Graph::draw(sf::RenderTarget& target, sf::RenderStates states) const
         std::string lastVertexString = name;
         lastVertexString += " [" + xposString + ":" + yposString + "] ";
         text.setString(lastVertexString);
-        text.setPosition(x_max*x_scale - text.getGlobalBounds().width, 60 - (y_max*y_scale + char_size*graphId));
+        text.setPosition(x_max*x_scale - text.getGlobalBounds().width, -(height/2.0 - char_size*graphId));
         target.draw(text, states);
 
         ++graphId;
@@ -113,12 +121,32 @@ void Graph::update()
     x_scale = width / (x_max * 2.0);
     grid_step = height / 20.0;
     char_size = grid_step * 0.5;
+
+    std::sort(data.begin(), data.end(), [](auto& lhs, auto& rhs) {
+        return (lhs.second[lhs.second.getVertexCount() - 1].position.x) < (rhs.second[rhs.second.getVertexCount() - 1].position.x);
+    });
 }
 
 void Graph::addPoint(const std::string& name, float x, float y)
 {
-    sf::Vertex vertex({ x * x_scale, -y * y_scale }, foreground_color);
-    data[name].append(vertex);
+    sf::Vertex vertex({ x, -y}, foreground_color);
+    int found_idx = -1;
+    for (int i = 0; i < data.size(); ++i)
+    {
+        if (data[i].first == name)
+        {
+            found_idx = i;
+            break;
+        }
+    }
+
+    if (found_idx < 0)
+    {
+        found_idx = data.size();
+        data.push_back({ name, {} });
+    }
+
+    data[found_idx].second.append(vertex);
 }
 
 
@@ -153,18 +181,20 @@ void Tester::runTest(int testId)
     std::vector<int> testResults(REPET, 0);
     for (int n = 0; n < N; n += STEP)
     {
-        test.test_precondition(n);
 
         for (int t = 0; t < REPET; ++t)
         {
+            test.test_precondition(n);
+
             sf::Time begin = test.clock.getElapsedTime();
             test.test_operation(n);
             sf::Time end = test.clock.restart();
             testResults[t] = ((end - begin).asMicroseconds());
+
+            test.test_postcondition(n);
         }
         std::sort(testResults.begin(), testResults.end());
         const float medianTime_ms = testResults[REPET / 2]/1000.0f;
-        test.test_postcondition(n);
 
         std::unique_lock<std::mutex> lock(graphLock);
         graph.foreground_color = test.test_color;
@@ -191,7 +221,25 @@ void Tester::showResult()
         while (window.pollEvent(event))
         {
             if (event.type == sf::Event::Closed)
+            {
                 window.close();
+            }
+            else if (event.type == sf::Event::MouseWheelScrolled)
+            {
+                const float bias = 0.1;
+                if (event.mouseWheelScroll.delta > bias)
+                {
+                    std::unique_lock<std::mutex> lock(graphLock);
+                    graph.y_max *= 1.1;
+                    graph.x_max *= 1.1;
+                }
+                else if(event.mouseWheelScroll.delta < bias)
+                {
+                    std::unique_lock<std::mutex> lock(graphLock);
+                    graph.y_max *= 0.9;
+                    graph.x_max *= 0.9;
+                }
+            }
         }
 
         window.clear();
